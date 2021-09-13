@@ -1,0 +1,106 @@
+;Register Cwc before using a .cwmake
+>
+-{_sOpt}="Debug"
+>
+-{_wToolchain}= VLianceTool/LibRT
+>
+-{pLib}=Lib/Lib_Debug/
+>
+-{pSrc}=freetype-2.10.4/src/
+-{pIncl}=freetype-2.10.4/include/
+-{pOut}=_out/{_sPlatform}_{_sOpt}/
+-{pLibDir}= Lib/Lib_{_sOpt}/
+-{pObj}= obj/{_sPlatform}_{_sOpt}/
+-{pObjLib}= {pObj}LibFT/
+>
+-{vIncl}= -I {pIncl} -I {pIncl}freetype/config/ -I {_wToolchain}/include
+>
+-{vFlag}= -{vIncl} 
+	-DFT_CONFIG_CONFIG_H=<ftconfig.h>>
+	-DFT_CONFIG_MODULES_H=<ftmodule.h>>
+	-DFT_CONFIG_OPTIONS_H=<ftoption.h>>
+	-DFT2_BUILD_LIBRARY
+	;-DFT_CONFIG_OPTIONS_H=<freetype/config/ftoption.h>>
+	-DFT_CONFIG_STANDARD_LIBRARY_H=<freetype/config/ftstdlib.h>>
+	
+	;-DFT_CONFIG_OPTION_NO_DEFAULT_SYSTEM
+	;-DFT_CONFIG_OPTION_DISABLE_STREAM_SUPPORT
+	
+	-DFT_THROW_PRINT
+
+	
+	;-DFT_DEBUG_LEVEL_ERROR
+	;-DFT_DEBUG_LEVEL_TRACE
+	
+	;-DHAVE_MEMCPY
+	;-DFT_MAKE_OPTION_SINGLE_OBJECT
+	;-DFT_LOAD_TARGET_LCD
+	;-DFT_LOAD_TARGET_LCD_V
+>
+;Build FreeType
+-c {pSrc}autofit/autofit.c 		-o {pObjLib}autofit.o		-{vFlag}
+|
+-c {pSrc}base/ftbase.c 			-o {pObjLib}ftbase.o		-{vFlag} |
+-c {pSrc}base/ftinit.c 			-o {pObjLib}ftinit.o		-{vFlag} |
+-c {pSrc}base/ftsystem.c 		-o {pObjLib}ftsystem.o		-{vFlag} |
+-c {pSrc}base/ftbitmap.c 		-o {pObjLib}ftbitmap.o		-{vFlag} |
+-c {pSrc}base/ftdebug.c 		-o {pObjLib}ftdebug.o		-{vFlag}
+|
+-c {pSrc}bdf/bdf.c 				-o {pObjLib}bdf.o			-{vFlag}
+|
+-c {pSrc}cache/ftcache.c		-o {pObjLib}ftcache.o		-{vFlag}
+|
+-c {pSrc}cff/cff.c 				-o {pObjLib}cff.o			-{vFlag}
+|
+-c {pSrc}cid/type1cid.c 		-o {pObjLib}type1cid.o		-{vFlag}
+|
+-c {pSrc}gxvalid/gxvalid.c 		-o {pObjLib}gxvalid.o		-{vFlag}
+|
+-c {pSrc}gzip/ftgzip.c 			-o {pObjLib}ftgzip.o		-{vFlag}
+|
+-c {pSrc}lzw/ftlzw.c 			-o {pObjLib}ftlzw.o			-{vFlag}
+|
+-c {pSrc}otvalid/otvalid.c 		-o {pObjLib}otvalid.o		-{vFlag}
+|
+-c {pSrc}pcf/pcf.c 				-o {pObjLib}pcf.o			-{vFlag}
+|
+-c {pSrc}pfr/pfr.c				-o {pObjLib}pfr.o			-{vFlag}
+|
+-c {pSrc}psaux/psaux.c 			-o {pObjLib}psaux.o			-{vFlag}
+|
+-c {pSrc}pshinter/pshinter.c 	-o {pObjLib}pshinter.o		-{vFlag}
+|
+-c {pSrc}psnames/psnames.c 		-o {pObjLib}psnames.o		-{vFlag}
+|
+-c {pSrc}raster/raster.c 		-o {pObjLib}raster.o		-{vFlag}
+|
+-c {pSrc}sfnt/sfnt.c 			-o {pObjLib}sfnt.o			-{vFlag}
+|
+-c {pSrc}smooth/smooth.c 		-o {pObjLib}smooth.o		-{vFlag}
+|
+-c {pSrc}truetype/truetype.c 	-o {pObjLib}truetype.o		-{vFlag}
+|
+-c {pSrc}type1/type1.c 			-o {pObjLib}type1.o			-{vFlag}
+|
+-c {pSrc}type42/type42.c		-o {pObjLib}type42.o		-{vFlag}
+>
+-c {pSrc}bzip2/					-o {pObjLib}bzip2/			-{vFlag}
+>
+-c {pSrc}winfonts/				-o {pObjLib}winfonts/		-{vFlag}
+>
+-o {pObjLib} -#To {pLibDir}libFreeType.a
+>
+;Build src
+-c src/LCD/ -o {pObj}src/LCD/
+	-{vFlag}
+	-I src/LCD/
+>
+;Link
+-o {pObj}src/LCD/ -#To {pOut}FreeType.exe
+	-L {pLibDir}
+	-lFreeType
+	-lgdi32
+	-Wl,--export-all-symbols
+>
+-#Run
+>
