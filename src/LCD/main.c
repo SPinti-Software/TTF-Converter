@@ -18,6 +18,7 @@
 
 /** Base include **/
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <windows.h>
@@ -41,8 +42,8 @@ HINSTANCE xe_hInstance = 0;
 #include "freetype/ftlcdfil.h"
 
 /** Parameters **/
-#define WIDTH   2048
-#define HEIGHT  2048
+#define WIDTH   8128
+#define HEIGHT  1024
 #define ANGLE 0.0
 #define SizeStep 4
 #define SizeMax 50
@@ -53,6 +54,16 @@ int FontSize 	= 8;
 #define DISPLAY_RENDER 0
 
 #define CHANNEL_NUM 3
+
+/** Main var **/
+#define MaxFontName 16 // Numbers of char MAX
+
+char* config_file = "FreeType.cfg";
+char* Size_List;
+char* FontName;
+char* filename;
+char* filepng;
+char* fileini;
 
 /** Main array **/
 unsigned char image[HEIGHT][WIDTH];
@@ -102,6 +113,51 @@ int WINAPI
 	setbuf(stdout, NULL);//Required to see every printf
 	setbuf(stderr, NULL);//Required to see every printf
 
+	printf(" - Loading config file (%s)... \n", config_file);
+	FILE *open_cfg;
+	int bufferLength = 4096;
+	char buffer[bufferLength];
+
+	open_cfg = fopen(config_file, "r");
+	if (open_cfg == NULL)
+        exit(EXIT_FAILURE);
+
+	bool completed = false;
+	while(fgets(buffer, bufferLength, open_cfg))
+	{
+		for(int index = 0; index < bufferLength; index++)
+		{
+			
+			if(buffer[index] == '=')
+			{
+				FontName = (char*) calloc(index + 1, 4);
+
+				Size_List = (char*) calloc(bufferLength, 4);
+
+				// Getting font name before "="
+				for(int pos = 0; pos < bufferLength; pos++)
+				{
+					if((pos >= bufferLength) || (buffer[pos] == '\0')) break;
+
+					if(pos < index)
+					{
+						FontName[pos] = buffer[pos];
+					}
+					else if((pos > index) && (pos < bufferLength))
+					{
+						Size_List[pos - (index+1)] = buffer[pos];
+						
+					}
+				}
+				break;
+			}
+
+
+		}
+		
+
+        printf("--> Font Name : '%s' Size_List : %s", FontName, Size_List);
+    }
 
 	FT_Library    	library;
 	FT_Face       	face;
@@ -112,9 +168,7 @@ int WINAPI
 	FT_Error      	error;
 
 
-	char*         	filename;
-	char*         	filepng;
-	char*			fileini;
+	
 	char*         	text;
 
 	double        	angle;
@@ -158,9 +212,9 @@ int WINAPI
 	pen.y = FontSize;// ( target_height - 200 ) * 64 - 12000;
 
 	printf(" - Opening INI file (%s) for writing ... ", fileini);
-	FILE *fp;
-	fp = fopen(fileini, "w");
-	printf("[OK]");
+	FILE *write_ini;
+	write_ini = fopen(fileini, "w");
+	printf("[OK]\n");
 
 	
 	
@@ -236,13 +290,14 @@ int WINAPI
 			
 		printf("[OK]\n");
 
-		fprintf(fp, "[FONT_SIZE_%d]\r", FontSize);
-		fprintf(fp, "org_x=%d\n", Pos_X);
-		fprintf(fp, "org_y=%d\n", Pos_Y);
-		fprintf(fp, "size_x=%d\n", Size_X);
-		fprintf(fp, "size_y=%d\n", Size_Y);
-		fprintf(fp, "\n");
-		fprintf(fp, "\n");
+		fprintf(write_ini, "[FONT_SIZE_%d]\n", FontSize);
+		fprintf(write_ini, "width=%d\n", (FontSize*DPI) / 64);
+		fprintf(write_ini, "height=%d\n", (FontSize*2) - (FontSize/2));
+		fprintf(write_ini, "org_x=%d\n", Pos_X);
+		fprintf(write_ini, "org_y=%d\n", Pos_Y);
+		fprintf(write_ini, "size_x=%d\n", Size_X);
+		fprintf(write_ini, "size_y=%d\n", Size_Y);
+		fprintf(write_ini, "\n");
 		
 		FontSize += SizeStep;
 		
@@ -253,7 +308,7 @@ int WINAPI
 	
 
 	printf(" - Closing INI file ... ");
-	fclose(fp);
+	fclose(write_ini);
 	printf("[OK]\n");
 	  
 	printf(" - Convert 32 bits to 8 bits ... ");
