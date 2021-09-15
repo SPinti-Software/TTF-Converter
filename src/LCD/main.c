@@ -114,6 +114,7 @@ int WINAPI
 
 	char*         	filename;
 	char*         	filepng;
+	char*			fileini;
 	char*         	text;
 
 	double        	angle;
@@ -121,6 +122,7 @@ int WINAPI
 	int           	n, num_chars;
 
 	filename = (char*)"arial.ttf";
+	fileini = (char*)"arial.ini";
 	filepng = (char*)"arial.png";
 	//text = (char*)"LCD Freetype Render!";
 	
@@ -155,9 +157,22 @@ int WINAPI
 	pen.x = 1;// 30 * 64;
 	pen.y = FontSize;// ( target_height - 200 ) * 64 - 12000;
 
+	printf(" - Opening INI file (%s) for writing ... ", fileini);
+	FILE *fp;
+	fp = fopen(fileini, "w");
+	printf("[OK]");
+
+	
+	
 	while(FontSize <= SizeMax)
 	{
-		
+		int NbSautsLigne = 1;
+		int Pos_X = 1;
+		int Pos_Y = 0;
+		int Size_X = WIDTH;
+		int Size_Y = 0;
+
+
 		
 		// use 50pt at 100dpi
 		printf(" - FT_Set_Char_Size(Size:%d DPI:%d) ... ", FontSize, DPI);
@@ -168,7 +183,7 @@ int WINAPI
 		// error handling omitted
 		slot = face->glyph;
 
-		
+		Pos_Y = (pen.y) - FontSize;
 
 		printf(" - FT_Library_SetLcdFilter() ... ");
 		FT_Library_SetLcdFilter( library, FT_LCD_FILTER_LIGHT);
@@ -198,27 +213,55 @@ int WINAPI
 			// increment pen position
 			pen.x += FontSize*DPI; //slot->advance.x;
 			pen.y += slot->advance.y;
+
+			if(Size_Y < slot->bitmap.rows)
+				Size_Y = slot->bitmap.rows;
 			
 			if(pen.x > (WIDTH * 64) - FontSize*DPI)
 			{
 				pen.x = 1;
 				pen.y += FontSize*2;
+				NbSautsLigne++;
 			}
 		}
+
+
 		
+		
+		
+		if(Pos_X <= 0)
+			Pos_X = 1;
+		if(Pos_Y <= 0)
+			Pos_Y = 1;
+			
 		printf("[OK]\n");
+
+		fprintf(fp, "[FONT_SIZE_%d]\r", FontSize);
+		fprintf(fp, "org_x=%d\n", Pos_X);
+		fprintf(fp, "org_y=%d\n", Pos_Y);
+		fprintf(fp, "size_x=%d\n", Size_X);
+		fprintf(fp, "size_y=%d\n", Size_Y);
+		fprintf(fp, "\n");
+		fprintf(fp, "\n");
 		
 		FontSize += SizeStep;
 		
 		pen.x = 1;
 		pen.y += FontSize*2;
 	}
+
+	
+
+	printf(" - Closing INI file ... ");
+	fclose(fp);
+	printf("[OK]\n");
 	  
 	printf(" - Convert 32 bits to 8 bits ... ");
 	
 	
 	int index = 0;
-	for ( int y = 0; y < HEIGHT; y++ ){
+	for ( int y = 0; y < HEIGHT; y++ )
+	{
 		 for ( int x = 0; x < WIDTH; x++ )
 		 {
 			//int r = (int) (pixels[y][x] & 0xFF0000);
@@ -234,6 +277,8 @@ int WINAPI
 		}
 	}
 	
+	
+
 	printf("[OK]\n");
 	
 
