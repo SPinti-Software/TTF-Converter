@@ -56,16 +56,19 @@ int FontSize 	= 8;
 #define CHANNEL_NUM 3
 
 /** Main var **/
-#define MaxFontName 16 // Numbers of char MAX
+#define MaxFontName 	16 // Numbers of char MAX
+#define MaxFontFiles 	24 	// Numbers of fonts
+#define MaxNumberSizes 	32
 
-char* config_file = "FreeType.cfg";
-char* Size_List;
-char* FontName;
-char* filename;
-char* filepng;
-char* fileini;
+char* config_file 			= "FreeType.cfg";
+char* Size_List_str;
+int IndexFontFilesArray 	= 0; 				// Incrementable index file font
+int Size_List[MaxFontFiles][MaxNumberSizes]; 	// Sizes list by font
+int Size_List_nb[MaxFontFiles]; 				// Number of sizes by fonts
+char Font_List_name[MaxFontFiles][MaxFontName];
 
-/** Main array **/
+
+/** Main image render **/
 unsigned char image[HEIGHT][WIDTH];
 uint32_t pixels[HEIGHT][WIDTH];
 uint8_t pixels_8[HEIGHT * WIDTH * CHANNEL_NUM];
@@ -122,30 +125,36 @@ int WINAPI
 	if (open_cfg == NULL)
         exit(EXIT_FAILURE);
 
-	bool completed = false;
+	
 	while(fgets(buffer, bufferLength, open_cfg))
 	{
+
+
 		for(int index = 0; index < bufferLength; index++)
 		{
-			
+			// Check "=" char
 			if(buffer[index] == '=')
 			{
-				FontName = (char*) calloc(index + 1, 4);
+				// Alloc memory
+				//Font_List_name[IndexFontFilesArray] = (char*) calloc(index + 1, MaxFontName);
+				
+				Size_List_str = (char*) calloc(bufferLength, 4);
 
-				Size_List = (char*) calloc(bufferLength, 4);
-
-				// Getting font name before "="
+				// Check chars before and after "="
 				for(int pos = 0; pos < bufferLength; pos++)
 				{
 					if((pos >= bufferLength) || (buffer[pos] == '\0')) break;
 
+					// Getting font name before "="
 					if(pos < index)
 					{
-						FontName[pos] = buffer[pos];
+						Font_List_name[IndexFontFilesArray][pos] = (char) buffer[pos];
+						
 					}
+					// Getting font sizes after "="
 					else if((pos > index) && (pos < bufferLength))
 					{
-						Size_List[pos - (index+1)] = buffer[pos];
+						Size_List_str[pos - (index+1)] = buffer[pos];
 						
 					}
 				}
@@ -155,217 +164,279 @@ int WINAPI
 
 		}
 		
+		
+		// Reformat to int array
+		int NumberElements = 0;
+		char *currnum;
+		int numbers[MaxNumberSizes], i = 0;
 
-        printf("--> Font Name : '%s' Size_List : %s", FontName, Size_List);
+		while ((currnum = strtok(i ? NULL : Size_List_str, ",")) != NULL)
+		{
+			Size_List[IndexFontFilesArray][i++] = atoi(currnum);
+			Size_List_nb[IndexFontFilesArray]++;
+		}
+		
+		
+
+        printf("======= '%s' =======\n", Font_List_name[IndexFontFilesArray]);
+		printf(" --> %d Size_List[%d] : ", IndexFontFilesArray, Size_List_nb[IndexFontFilesArray]);
+		for(int b = 0; b < Size_List_nb[IndexFontFilesArray]; b++)
+			printf(" %d ", Size_List[IndexFontFilesArray][b]);
+		
+		printf(".\n");
+
+		IndexFontFilesArray++;
     }
 
-	FT_Library    	library;
-	FT_Face       	face;
+	printf("Config file loaded !\n");
 
-	FT_GlyphSlot  	slot;
-	FT_Matrix     	matrix;
-	FT_Vector     	pen;
-	FT_Error      	error;
+	int Loaded_Font = 0;
+	int Next_Size = 0;
 
-
-	
-	char*         	text;
-
-	double        	angle;
-	int           	target_height;
-	int           	n, num_chars;
-
-	filename = (char*)"arial.ttf";
-	fileini = (char*)"arial.ini";
-	filepng = (char*)"arial.png";
-	//text = (char*)"LCD Freetype Render!";
-	
-	text = (char*) calloc(127, 4);
-	for(int index=32; index < 127; index++)
-		sprintf(text, "%s%c", text, index);
-	
-	
-
-	num_chars     = strlen( text );
-	angle         = ( ANGLE / 360 ) * 3.14159 * 2;      // use 25 degrees
-	target_height = HEIGHT;
-
-	printf(" - FT_Init_FreeType() ... ");
-	error = FT_Init_FreeType( &library );              // initialize library
-	printf("[OK] return:%d\n", (int) error);
-
-
-	printf(" - FT_New_Face(%s) ... ", filename);
-	error = FT_New_Face( library, filename, 0, &face );// create face object
-	printf("[OK] return:%d\n", (int) error);
-
-
-	//set up matrix
-	matrix.xx = (FT_Fixed)( cos( angle ) * 0x10000L );
-	matrix.xy = (FT_Fixed)(-sin( angle ) * 0x10000L );
-	matrix.yx = (FT_Fixed)( sin( angle ) * 0x10000L );
-	matrix.yy = (FT_Fixed)( cos( angle ) * 0x10000L );
-
-	// the pen position in 26.6 cartesian space coordinates;
-	// start at (300,200) relative to the upper left corner
-	pen.x = 1;// 30 * 64;
-	pen.y = FontSize;// ( target_height - 200 ) * 64 - 12000;
-
-	printf(" - Opening INI file (%s) for writing ... ", fileini);
-	FILE *write_ini;
-	write_ini = fopen(fileini, "w");
-	printf("[OK]\n");
-
-	
-	
-	while(FontSize <= SizeMax)
+	while(Loaded_Font < IndexFontFilesArray)
 	{
-		int NbSautsLigne = 1;
-		int Pos_X = 1;
-		int Pos_Y = 0;
-		int Size_X = WIDTH;
-		int Size_Y = 0;
+
+		printf("----------------------------------\n");
+		FT_Library    	library;
+		FT_Face       	face;
+
+		FT_GlyphSlot  	slot;
+		FT_Matrix     	matrix;
+		FT_Vector     	pen;
+		FT_Error      	error;
 
 
 		
-		// use 50pt at 100dpi
-		printf(" - FT_Set_Char_Size(Size:%d DPI:%d) ... ", FontSize, DPI);
-		error = FT_Set_Char_Size( face, FontSize * 64, 0, DPI, 0 );                //set character size
+		char*         	text;
+
+		double        	angle;
+		int           	target_height;
+		int           	n, num_chars;
+
+		char* filename = malloc(strlen(Font_List_name[Loaded_Font]) + 3);
+		char* filepng = malloc(strlen(Font_List_name[Loaded_Font]) + 3);
+		char* fileini = malloc(strlen(Font_List_name[Loaded_Font]) + 3);
+
+		sprintf(filename, "%s.ttf", Font_List_name[Loaded_Font]);
+		sprintf(fileini, "%s.ini", Font_List_name[Loaded_Font]);
+		sprintf(filepng, "%s.png", Font_List_name[Loaded_Font]);
+		FontSize = Size_List[Loaded_Font][Next_Size]; // put first size
+		
+		printf(" --> (%d)Generation of '%s' and '%s' from '%s'\n", Loaded_Font, filepng, fileini, filename);
+		printf(" --> With %d differents sizes [", Size_List_nb[Loaded_Font]);
+		for(int b = 0; b < Size_List_nb[Loaded_Font]; b++)
+			printf("%d ", Size_List[Loaded_Font][b]);
+		printf("]\n\n");
+
+		text = (char*) calloc(127, 4);
+		for(int index=32; index < 127; index++)
+			sprintf(text, "%s%c", text, index);
+		
+		
+
+		num_chars     = strlen( text );
+		angle         = ( ANGLE / 360 ) * 3.14159 * 2;      // use 25 degrees
+		target_height = HEIGHT;
+
+		printf(" - FT_Init_FreeType() ... ");
+		error = FT_Init_FreeType( &library );              // initialize library
 		printf("[OK] return:%d\n", (int) error);
-		
-		
-		// error handling omitted
-		slot = face->glyph;
 
-		Pos_Y = (pen.y) - FontSize;
 
-		printf(" - FT_Library_SetLcdFilter() ... ");
-		FT_Library_SetLcdFilter( library, FT_LCD_FILTER_LIGHT);
-		
+		printf(" - FT_New_Face(%s) ... ", filename);
+		error = FT_New_Face( library, filename, 0, &face );// create face object
+		printf("[OK] return:%d\n", (int) error);
+
+
+		//set up matrix
+		matrix.xx = (FT_Fixed)( cos( angle ) * 0x10000L );
+		matrix.xy = (FT_Fixed)(-sin( angle ) * 0x10000L );
+		matrix.yx = (FT_Fixed)( sin( angle ) * 0x10000L );
+		matrix.yy = (FT_Fixed)( cos( angle ) * 0x10000L );
+
+		// the pen position in 26.6 cartesian space coordinates;
+		// start at (300,200) relative to the upper left corner
+		pen.x = 1;// 30 * 64;
+		pen.y = FontSize;// ( target_height - 200 ) * 64 - 12000;
+
+		printf(" - Opening INI file (%s) for writing ... ", fileini);
+		FILE *write_ini;
+		write_ini = fopen(fileini, "w");
 		printf("[OK]\n");
 
-		printf(" - Init font char... ");
-		for ( n = 0; n < num_chars; n++ )
+		
+		
+		for(int boucle = 1; boucle <= Size_List_nb[Loaded_Font]; boucle++)
 		{
-			// set transformation
-			FT_Set_Transform( face, &matrix, &pen );
+			int NbSautsLigne = 1;
+			int Pos_X = 1;
+			int Pos_Y = 0;
+			int Size_X = WIDTH;
+			int Size_Y = 0;
 
-			error = FT_Load_Char( face, text[n], FT_LOAD_RENDER | FT_LOAD_TARGET_LCD );
+
 			
-			if ( error )
-			{
-				printf("[error] %d\n", (int) error);
-				continue;                 // ignore errors
-			}
-			  
-
-			//now, draw to our target surface (convert position)
-			draw_bitmap( &slot->bitmap,
-						 slot->bitmap_left,
-						 /*target_height*/ pen.y - slot->bitmap_top );
-
-			// increment pen position
-			pen.x += FontSize*DPI; //slot->advance.x;
-			pen.y += slot->advance.y;
-
-			if(Size_Y < slot->bitmap.rows)
-				Size_Y = slot->bitmap.rows;
+			// use 50pt at 100dpi
+			printf(" - FT_Set_Char_Size(Size:%d DPI:%d) ... ", FontSize, DPI);
+			error = FT_Set_Char_Size( face, FontSize * 64, 0, DPI, 0 );                //set character size
+			printf("[OK] return:%d\n", (int) error);
 			
-			if(pen.x > (WIDTH * 64) - FontSize*DPI)
+			
+			// error handling omitted
+			slot = face->glyph;
+
+			Pos_Y = (pen.y) - FontSize;
+
+			printf(" - FT_Library_SetLcdFilter() ... ");
+			FT_Library_SetLcdFilter( library, FT_LCD_FILTER_LIGHT);
+			
+			printf("[OK]\n");
+
+			printf(" - Init font char... ");
+			for ( n = 0; n < num_chars; n++ )
 			{
-				pen.x = 1;
-				pen.y += FontSize*2;
-				NbSautsLigne++;
+				// set transformation
+				FT_Set_Transform( face, &matrix, &pen );
+
+				error = FT_Load_Char( face, text[n], FT_LOAD_RENDER | FT_LOAD_TARGET_LCD );
+				
+				if ( error )
+				{
+					printf("[error] %d\n", (int) error);
+					continue;                 // ignore errors
+				}
+				
+
+				//now, draw to our target surface (convert position)
+				draw_bitmap( &slot->bitmap,
+							slot->bitmap_left,
+							/*target_height*/ pen.y - slot->bitmap_top );
+
+				// increment pen position
+				pen.x += FontSize*DPI; //slot->advance.x;
+				pen.y += slot->advance.y;
+
+				if(Size_Y < slot->bitmap.rows)
+					Size_Y = slot->bitmap.rows;
+				
+				if(pen.x > (WIDTH * 64) - FontSize*DPI)
+				{
+					pen.x = 1;
+					pen.y += FontSize*2;
+					NbSautsLigne++;
+				}
 			}
+
+
+			
+			
+			
+			if(Pos_X <= 0)
+				Pos_X = 1;
+			if(Pos_Y <= 0)
+				Pos_Y = 1;
+				
+			printf("[OK]\n");
+
+			fprintf(write_ini, "[FONT_SIZE_%d]\n", FontSize);
+			fprintf(write_ini, "width=%d\n", (FontSize*DPI) / 64);
+			fprintf(write_ini, "height=%d\n", (FontSize*2) - (FontSize/2));
+			fprintf(write_ini, "org_x=%d\n", Pos_X);
+			fprintf(write_ini, "org_y=%d\n", Pos_Y);
+			fprintf(write_ini, "size_x=%d\n", Size_X);
+			fprintf(write_ini, "size_y=%d\n", Size_Y);
+			fprintf(write_ini, "\n");
+			
+			FontSize = Size_List[Loaded_Font][boucle]; 
+			
+			pen.x = 1;
+			pen.y += FontSize*2;
 		}
 
+		
 
-		
-		
-		
-		if(Pos_X <= 0)
-			Pos_X = 1;
-		if(Pos_Y <= 0)
-			Pos_Y = 1;
-			
-		printf("[OK]\n");
-
-		fprintf(write_ini, "[FONT_SIZE_%d]\n", FontSize);
-		fprintf(write_ini, "width=%d\n", (FontSize*DPI) / 64);
-		fprintf(write_ini, "height=%d\n", (FontSize*2) - (FontSize/2));
-		fprintf(write_ini, "org_x=%d\n", Pos_X);
-		fprintf(write_ini, "org_y=%d\n", Pos_Y);
-		fprintf(write_ini, "size_x=%d\n", Size_X);
-		fprintf(write_ini, "size_y=%d\n", Size_Y);
-		fprintf(write_ini, "\n");
-		
-		FontSize += SizeStep;
-		
-		pen.x = 1;
-		pen.y += FontSize*2;
-	}
-
-	
-
-	printf(" - Closing INI file ... ");
-	fclose(write_ini);
-	printf("[OK]\n");
-	  
-	printf(" - Convert 32 bits to 8 bits ... ");
-	
-	
-	int index = 0;
-	for ( int y = 0; y < HEIGHT; y++ )
-	{
-		 for ( int x = 0; x < WIDTH; x++ )
-		 {
-			//int r = (int) (pixels[y][x] & 0xFF0000);
-			//int g = (int) (pixels[y][x] & 0x00FF00);
-			int b = (int) (pixels[y][x] & 0x0000FF);
-			
-			pixels_8[index+0] = b;
-			pixels_8[index+1] = b;
-			pixels_8[index+2] = b;
-			
-			index += 3;
-
-		}
-	}
-	
-	
-
-	printf("[OK]\n");
-	
-
-	printf(" - Writing to %s file ... ", filepng);
-	// stbi_write_png(char const *filename, int w, int h, int comp, const void *data, int stride_in_bytes);
-	stbi_write_png(filepng, WIDTH, HEIGHT, CHANNEL_NUM, pixels_8, WIDTH * CHANNEL_NUM);
-	
-	printf("[OK]\n");
-	
-	if(DISPLAY_RENDER == 1)
-	{
-		printf(" - Creating window ... ");
-		int idx = Create_context((ContextInf){.width=WIDTH, .height=HEIGHT});
-		Blit_context(idx, (uint8_t*)pixels, WIDTH);
-		
-		
-		
-		
-		SetWindowTextA((HWND) _hInstance, "FreeType - Windows TTF file rendering experimentation");
-		
+		printf(" - Closing INI file ... ");
+		fclose(write_ini);
 		printf("[OK]\n");
 		
-		while(1)
-		{		
-			Sleep(1);
+		printf(" - Convert 32 bits to 8 bits ... ");
+		
+		
+		int index = 0;
+		for ( int y = 0; y < HEIGHT; y++ )
+		{
+			for ( int x = 0; x < WIDTH; x++ )
+			{
+				//int r = (int) (pixels[y][x] & 0xFF0000);
+				//int g = (int) (pixels[y][x] & 0x00FF00);
+				int b = (int) (pixels[y][x] & 0x0000FF);
+				
+				pixels_8[index+0] = b;
+				pixels_8[index+1] = b;
+				pixels_8[index+2] = b;
+				
+				index += 3;
+
+			}
 		}
-	}
-	
-	printf(" - FT_Done_Face()\n");
-	FT_Done_Face( face );
-	printf(" - FT_Done_FreeType()\n");
-	FT_Done_FreeType( library );
+		
+		
+
+		printf("[OK]\n");
+		
+
+		printf(" - Writing to %s file ... ", filepng);
+		// stbi_write_png(char const *filename, int w, int h, int comp, const void *data, int stride_in_bytes);
+		stbi_write_png(filepng, WIDTH, HEIGHT, CHANNEL_NUM, pixels_8, WIDTH * CHANNEL_NUM);
+		
+		printf("[OK]\n");
+		
+		if(DISPLAY_RENDER == 1)
+		{
+			printf(" - Creating window ... ");
+			int idx = Create_context((ContextInf){.width=WIDTH, .height=HEIGHT});
+			Blit_context(idx, (uint8_t*)pixels, WIDTH);
+			
+			
+			
+			
+			SetWindowTextA((HWND) _hInstance, "FreeType - Windows TTF file rendering experimentation");
+			
+			printf("[OK]\n");
+			
+			while(1)
+			{		
+				Sleep(1);
+			}
+		}
+		
+		printf(" - FT_Done_Face()\n");
+		FT_Done_Face( face );
+		printf(" - FT_Done_FreeType()\n");
+		FT_Done_FreeType( library );
+
+		printf(" - Cleaning buffers.");
+
+		int indexclean = 0;
+		for ( int y = 0; y < HEIGHT; y++ )
+		{
+			for ( int x = 0; x < WIDTH; x++ )
+			{
+				
+				pixels[y][x] = 0;
+				
+			}
+		}
+
+		printf(".. ");
+
+		for(int indexclean = 0; indexclean < HEIGHT * WIDTH * CHANNEL_NUM; indexclean++)
+			pixels_8[index] = 0;
+
+		printf("[OK]\n");
+
+		Loaded_Font++;
+	} // while
 
 	printf(" Bye! \n\r");
 	return 0;

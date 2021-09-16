@@ -92,7 +92,7 @@
 >
 ;Build src
 -c src/LCD/ -o {pObj}src/LCD/
-	-{vFlag}
+	-{vFlag} -ggdb
 	-I src/LCD/
 >
 ;Link
