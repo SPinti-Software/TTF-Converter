@@ -60,7 +60,8 @@ int FontSize 	= 8;
 #define MaxFontFiles 	24 	// Numbers of fonts
 #define MaxNumberSizes 	32
 
-char* config_file 			= "FreeType.cfg";
+char* Temp_dir 				= "TEMP\\fonts";
+char* config_file 			= "KRNL\\config\\fonts.cfg";
 char* Size_List_str;
 int IndexFontFilesArray 	= 0; 				// Incrementable index file font
 int Size_List[MaxFontFiles][MaxNumberSizes]; 	// Sizes list by font
@@ -125,13 +126,22 @@ int WINAPI
 	if (open_cfg == NULL)
         exit(EXIT_FAILURE);
 
-	
+	bool Line_SRC = true;
+	char* SRC_Str = calloc(24, 4);
 	while(fgets(buffer, bufferLength, open_cfg))
 	{
 
 
 		for(int index = 0; index < bufferLength; index++)
 		{
+			// Path source
+			if((buffer[index] == 'S') && 
+				(buffer[index+1] == 'R') && 
+				(buffer[index+2] == 'C') && 
+				(buffer[index+3] == '='))
+			{
+				Line_SRC = true;
+			}
 			// Check "=" char
 			if(buffer[index] == '=')
 			{
@@ -148,13 +158,21 @@ int WINAPI
 					// Getting font name before "="
 					if(pos < index)
 					{
-						Font_List_name[IndexFontFilesArray][pos] = (char) buffer[pos];
+						if(Line_SRC == false)
+							// Recuperer le nom du font
+							Font_List_name[IndexFontFilesArray][pos] = (char) buffer[pos];
 						
 					}
 					// Getting font sizes after "="
 					else if((pos > index) && (pos < bufferLength))
 					{
-						Size_List_str[pos - (index+1)] = buffer[pos];
+						if(Line_SRC == false)
+							// Recuperer les parametres des SIZES
+							Size_List_str[pos - (index+1)] = buffer[pos];
+						else
+							// Recuperer le path source (sans le CRLF)
+							if((buffer[pos] != '\n') && (buffer[pos] != '\r'))
+								SRC_Str[pos - (index+1)] = buffer[pos];
 						
 					}
 				}
@@ -164,31 +182,43 @@ int WINAPI
 
 		}
 		
-		
-		// Reformat to int array
-		int NumberElements = 0;
-		char *currnum;
-		int numbers[MaxNumberSizes], i = 0;
-
-		while ((currnum = strtok(i ? NULL : Size_List_str, ",")) != NULL)
+		if(Line_SRC == true)
 		{
-			Size_List[IndexFontFilesArray][i++] = atoi(currnum);
-			Size_List_nb[IndexFontFilesArray]++;
+			printf(" --> Source font path : '%s'\n", SRC_Str);
+			Line_SRC = false;
 		}
+		else
 		
-		
+		{
+			
+			// Reformat to int array
+			int NumberElements = 0;
+			char *currnum;
+			int numbers[MaxNumberSizes], i = 0;
 
-        printf("======= '%s' =======\n", Font_List_name[IndexFontFilesArray]);
-		printf(" --> %d Size_List[%d] : ", IndexFontFilesArray, Size_List_nb[IndexFontFilesArray]);
-		for(int b = 0; b < Size_List_nb[IndexFontFilesArray]; b++)
-			printf(" %d ", Size_List[IndexFontFilesArray][b]);
-		
+			while ((currnum = strtok(i ? NULL : Size_List_str, ",")) != NULL)
+			{
+				Size_List[IndexFontFilesArray][i++] = atoi(currnum);
+				Size_List_nb[IndexFontFilesArray]++;
+			}
+			
+			
+
+			printf("======= '%s' =======\n", Font_List_name[IndexFontFilesArray]);
+			printf(" --> %d Size_List[%d] : ", IndexFontFilesArray, Size_List_nb[IndexFontFilesArray]);
+			for(int b = 0; b < Size_List_nb[IndexFontFilesArray]; b++)
+				printf(" %d ", Size_List[IndexFontFilesArray][b]);
+			
+			IndexFontFilesArray++;
+		}
 		printf(".\n");
 
-		IndexFontFilesArray++;
+		
     }
 
 	printf("Config file loaded !\n");
+
+	
 
 	int Loaded_Font = 0;
 	int Next_Size = 0;
@@ -217,9 +247,9 @@ int WINAPI
 		char* filepng = malloc(strlen(Font_List_name[Loaded_Font]) + 3);
 		char* fileini = malloc(strlen(Font_List_name[Loaded_Font]) + 3);
 
-		sprintf(filename, "%s.ttf", Font_List_name[Loaded_Font]);
-		sprintf(fileini, "%s.ini", Font_List_name[Loaded_Font]);
-		sprintf(filepng, "%s.png", Font_List_name[Loaded_Font]);
+		sprintf(filename, "%s\\%s.ttf", SRC_Str, Font_List_name[Loaded_Font]); // MEDIA path
+		sprintf(fileini, "%s\\%s.ini", Temp_dir, Font_List_name[Loaded_Font]); // TEMP path
+		sprintf(filepng, "%s\\%s.png", Temp_dir, Font_List_name[Loaded_Font]); // TEMP path
 		FontSize = Size_List[Loaded_Font][Next_Size]; // put first size
 		
 		printf(" --> (%d)Generation of '%s' and '%s' from '%s'\n", Loaded_Font, filepng, fileini, filename);
