@@ -96,7 +96,7 @@
 	-I src/LCD/
 >
 ;Link
--o {pObj}src/LCD/ -#To {pOut}FreeType.exe
+-o {pObj}src/LCD/ -#To {pOut}ttf_gen.exe
 	-L {pLibDir}
 	-lFreeType
 	-lgdi32
