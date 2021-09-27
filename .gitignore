@@ -3,3 +3,4 @@ imgui.ini
 obj/
 _out/
 *.wdat
+/Copy_CPCDOS_BIN.bat
