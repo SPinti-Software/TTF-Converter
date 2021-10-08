@@ -15,6 +15,7 @@
  *
 */
 
+// Passer en 32 bits??
 
 /** Base include **/
 #include <stdio.h>
@@ -42,8 +43,8 @@ HINSTANCE xe_hInstance = 0;
 #include "freetype/ftlcdfil.h"
 
 /** Parameters **/
-#define WIDTH   	8128
-#define HEIGHT  	1024
+#define WIDTH   	5000
+#define HEIGHT  	640
 #define ANGLE 		0.0
 #define SizeStep 	4
 #define SizeMax 	50
@@ -59,6 +60,9 @@ int FontSize 	= 8;
 #define MaxFontName 	16 // Numbers of char MAX
 #define MaxFontFiles 	24 	// Numbers of fonts
 #define MaxNumberSizes 	32
+
+#define MaxTextLength	128 // Maximum CHAAAAAAR array elements
+#define MaxFilePath		64 	// PNG, INI, TTF file length
 
 char* Temp_dir 				= "TEMP\\fonts";
 char* config_file 			= "KRNL\\config\\fonts.cfg";
@@ -241,19 +245,15 @@ int WINAPI
 		printf("----------------------------------\n");
 		
 
-
-		
-		
-
 		double        	angle;
 		int           	target_height;
 		int           	n, num_chars;
 
-		char filename[64]; // = calloc(1, strlen(Font_List_name[Loaded_Font]) + 3);
-		char filepng[64]; // = calloc(1, strlen(Font_List_name[Loaded_Font]) + 3);
-		char fileini[64]; // = calloc(1, strlen(Font_List_name[Loaded_Font]) + 3);
+		char filename[MaxFilePath];
+		char filepng[MaxFilePath];
+		char fileini[MaxFilePath];
 
-		char text[128];
+		char text[MaxTextLength];
 
 		sprintf(filename, "%s\\%s.ttf", SRC_Str, Font_List_name[Loaded_Font]); // MEDIA path
 		sprintf(filepng, "%s\\%s.png", Temp_dir, Font_List_name[Loaded_Font]); // TEMP path
@@ -266,14 +266,18 @@ int WINAPI
 		printf(" --> Loaded_Font:%d - Generation of '%s' and '%s' from '%s'\n", Loaded_Font, filepng, fileini, filename);
 		printf(" --> With %d differents sizes [", Size_List_nb[Loaded_Font]);
 		for(int b = 0; b < Size_List_nb[Loaded_Font]; b++)
-		{
 			printf("%d", Size_List[Loaded_Font][b]);
-		}
+
 		printf("]\n\n");
 
 		printf("     Creating char array ... ");
 		
-		for(int index=32; index < 127; index++)
+		// Cleanning
+		for(int index=0; index < MaxTextLength; index++)
+			text[index] = '\0';
+
+		// Writing !
+		for(int index=32; index < MaxTextLength; index++)
 			sprintf(text, "%s%c", text, index);
 
 		printf("[OK]\n");
@@ -318,7 +322,8 @@ int WINAPI
 			write_ini = fopen(fileini, "w");
 			printf("[OK]\n");
 
-			
+			int char_sizes_list[128];
+			memset(char_sizes_list, -1, 128);
 			
 			for(int boucle = 1; boucle <= Size_List_nb[Loaded_Font]; boucle++)
 			{
@@ -367,8 +372,12 @@ int WINAPI
 								/*target_height*/ pen.y - slot->bitmap_top );
 
 					// increment pen position
-					pen.x += FontSize*DPI; //slot->advance.x;
+					// pen.x += FontSize*DPI; //slot->advance.x;
+					pen.x += slot->advance.x;
 					pen.y += slot->advance.y;
+
+					// Stocker la taille de chaque char dans un tableau
+					char_sizes_list[n] = slot->advance.x / 64;
 
 					if(Size_Y < slot->bitmap.rows)
 						Size_Y = slot->bitmap.rows;
@@ -399,7 +408,12 @@ int WINAPI
 				fprintf(write_ini, "org_y=%d\n", Pos_Y);
 				fprintf(write_ini, "size_x=%d\n", Size_X);
 				fprintf(write_ini, "size_y=%d\n", Size_Y);
-				fprintf(write_ini, "\n");
+				fprintf(write_ini, "char_size=");
+				for(int b = 0; b < 128; b++)
+					if(char_sizes_list[b] >= 0)
+						fprintf(write_ini, "%d,", char_sizes_list[b]);
+
+				fprintf(write_ini, "\n\n");
 				
 				FontSize = Size_List[Loaded_Font][boucle]; 
 				
