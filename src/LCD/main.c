@@ -54,7 +54,7 @@ int FontSize 	= 8;
 
 #define DISPLAY_RENDER 0
 
-#define CHANNEL_NUM 3
+#define CHANNEL_NUM 4
 
 /** Main var **/
 #define MaxFontName 	16 // Numbers of char MAX
@@ -438,11 +438,15 @@ int WINAPI
 					//int g = (int) (pixels[y][x] & 0x00FF00);
 					int b = (int) (pixels[y][x] & 0x0000FF);
 					
-					pixels_8[index+0] = b;
-					pixels_8[index+1] = b;
-					pixels_8[index+2] = b;
+					if(b > 0)
+					{
+						pixels_8[index+0] = 255;
+						pixels_8[index+1] = 255;
+						pixels_8[index+2] = 255;
+					}
+					pixels_8[index+3] = b; // alpha
 					
-					index += 3;
+					index += 4;
 
 				}
 			}
